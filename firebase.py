@@ -5,6 +5,7 @@ from firebase_admin import firestore
 from datetime import date
 from datetime import datetime
 
+
 def get_db():
 	print("enter initialize function")
 	if (not len(firebase_admin._apps)):
@@ -65,18 +66,19 @@ def get_user_name(user_id):
 		
 	return "NULL user"
 
-def add_to_sendbox(sender_id, receiver_name, add_title, add_content):
-	sender_name = get_user_name(sender_id)
-	data = {add_title: add_content}
+def delete_mail(user_id, title):
+	
+	user_name = get_user_name(user_id)
+	db = get_db()
+	print("user name:", user_name)
+	print("title:", title)
+	path = "user/" + user_name + "/mailbox/" + title
+	doc_ref = db.document(path);
+	doc_ref.delete()
+	print("mailbox delete success")
 
-	path = "user/" + sender_name + "/sendbox/" + receiver_name
 
-	db_document = db.document(path)
-	db_document.update(data)
-	print("add_to_sendbox success")
-
-
-def send_mailbox(receiver_name, sender_id, mail_type, content):
+def send_mailbox(receiver_name, sender_id, mail_type, content, name_mode, date_mode):
 	'''
 	name: receiver
 	sender_id: sender id(if anonymous, clear it)
@@ -89,13 +91,21 @@ def send_mailbox(receiver_name, sender_id, mail_type, content):
 		return "there is no existed user"
 
 	sender_name = get_user_name(sender_id)
-	print("sender-name:", sender_name)
+	# print("sender-name:", sender_name)
+
+	# 判斷日期
+	if(date_mode == "無"):
+		date_time = datetime.today()
+	else:
+		date_time = datetime.strptime(date_mode, "%Y %m %d")
+
 
 	doc = {
-		'sender-name': sender_name,
+		'sender-name': name_mode,
 		'receiver-id': name_id,
 		'type': mail_type,
 		'content': content,
+		'date': date_time,
 		'read': False
 	}
 
@@ -111,6 +121,8 @@ def send_mailbox(receiver_name, sender_id, mail_type, content):
 
 	# doc_ref提供一個set的方法，input必須是dictionary
 	doc_ref.set(doc)
+
+
 	return "已送進信箱囉~ 我會使命必達的~"
 
 def recv_mailbox(receiver_id):
@@ -123,21 +135,44 @@ def recv_mailbox(receiver_id):
 	doc_ref = db.collection(path)
 	docs = doc_ref.get()
 	print("receiver_name:", receiver_name)
+	current_time = datetime.today()
+	print("current time:", current_time)
 
 	for doc in docs:
 		data = doc.to_dict()
-		print(u'{} => {}'.format(doc.id, data))
-		if(data["read"] == False):
+		string = str(data["date"])
+		string = string[:string.index(" ")]
+		print(string)
+		date_time = datetime.strptime(string, "%Y-%m-%d")
+		# print("next:", date["date"])
+		if(data["read"] == False and (date_time <= current_time)):
 			path += ("/" + str(doc.id))
-			print("path:", path)
 			db_document = db.document(path)
 			revise = {"read": True}
 			db_document.update(revise)
-			print("update data success")
 			if(data["type"] == "img"):
 				return data["content"], "img", data["sender-name"]
-				#return_text = send_image_url(receiver_id, data["content"])
-				#return data["sender-name"], return_text, str(doc.id)
 			return data["sender-name"], data["content"], str(doc.id)
 	return "empty", "fail", "(date)"
 
+def get_mailbox_info(user_name, item, value):
+
+	db = get_db()
+	receiver_name = get_user_name(receiver_id)
+
+	#Get Collection
+	path = "user/" + user_name + "/mailbox"
+	doc_ref = db.collection(path)
+	docs = doc_ref.get()
+	mail_content = ""
+
+	for doc in docs:
+		data = doc.to_dict()
+		try:
+			if(data["read"] == False):
+				mail_content += (data["date"] + " | " + data["sender_name"] + "\n")
+		except:
+			pass
+
+	print("scan complete")
+	return mail_content

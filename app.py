@@ -9,7 +9,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMess
 from linebot.models import ImageSendMessage, VideoSendMessage, LocationSendMessage, StickerSendMessage
 
 from fsm import TocMachine
-from utils import send_text_message
+from utils import send_text_message, send_image_message
 
 from weather import get_weather
 
@@ -20,10 +20,22 @@ import random
 load_dotenv()
 
 machine = TocMachine(
-    states=["user", "state_send_1", "state_send_2", "state_send_3", "state_send_4_text", "state_send_4_img",
-            "state_AQI", "state_add_user", "state_search_user",
-             "state_quick_start", "state_recv_mail"],
+    states=["user","state_quiet", "state_recover", "state_send_1", "state_send_2", "state_send_3", "state_send_4_text", "state_send_4_img",
+            "state_AQI", "state_add_user", "state_search_user", "state_select_name", "state_select_date",
+            "state_recv_mail", "state_delete_mail"],
     transitions=[
+        {
+            "trigger": "advance",
+            "source": "state_quiet",
+            "dest": "state_recover",
+            "conditions": "is_going_to_state_recover",
+        },
+        {   "trigger": "advance", 
+            "source": [ "user","state_quiet", "state_send_1", "state_send_2", "state_send_3", "state_send_4_text", "state_send_4_img",
+                        "state_AQI", "state_add_user", "state_search_user",  "state_recv_mail", "state_delete_mail", "state_select_name", "state_select_date"], 
+            "dest": "state_quiet",
+            "conditions": "is_going_to_state_quiet"
+        },
         {
             "trigger": "advance",
             "source": "user",
@@ -56,9 +68,15 @@ machine = TocMachine(
         },
         {
             "trigger": "advance",
-            "source": "user",
-            "dest": "state_AQI",
-            "conditions": "is_going_to_state_AQI",
+            "source": ["state_send_4_img", "state_send_4_text"],
+            "dest": "state_select_name",
+            "conditions": "is_going_to_state_select_name",
+        },
+        {
+            "trigger": "advance",
+            "source": "state_select_name",
+            "dest": "state_select_date",
+            "conditions": "is_going_to_state_select_date",
         },
         {
             "trigger": "advance",
@@ -75,18 +93,24 @@ machine = TocMachine(
         {
             "trigger": "advance",
             "source": "user",
-            "dest": "state_quick_start",
-            "conditions": "is_going_to_state_quick_start",
+            "dest": "state_recv_mail",
+            "conditions": "is_going_to_state_recv_mail",
+        },
+        {
+            "trigger": "advance",
+            "source": "state_recv_mail",
+            "dest": "state_delete_mail",
+            "conditions": "is_going_to_state_delete_mail",
         },
         {
             "trigger": "advance",
             "source": "user",
-            "dest": "state_recv_mail",
-            "conditions": "is_going_to_state_recv_mail",
+            "dest": "state_AQI",
+            "conditions": "is_going_to_state_AQI",
         },
         {"trigger": "go_back", 
-        "source": [ "state_send_4_text", "state_send_4_img",
-                    "state_AQI", "state_add_user", "state_search_user", "state_quick_start", "state_recv_mail"], 
+        "source": [ "state_select_date", "state_recover",
+                    "state_AQI", "state_add_user", "state_search_user", "state_delete_mail"], 
         "dest": "user"},
     ],
     initial="user",
@@ -94,7 +118,7 @@ machine = TocMachine(
     show_conditions=True,
 )
 
-app = Flask(__name__, static_url_path="")
+app = Flask(__name__)
 
 # get channel_secret and channel_access_token from your environment variable
 channel_secret = os.getenv("LINE_CHANNEL_SECRET", None)
@@ -129,22 +153,6 @@ def callback():
             continue
         if not isinstance(event.message, TextMessage):
             continue
-
-        # if("貼圖" in event.message.text):
-        #     sticker_list = range(52002734, 52002774)
-        #     random_num = random.randint(0, 40)
-        #     line_bot_api.reply_message(event.reply_token,StickerSendMessage(package_id=11537, sticker_id=sticker_list[random_num]))
-
-        # elif("圖片" in event.message.text):
-        #     image_url = "https://i.imgur.com/eTldj2E.png?1"
-        #     line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
-
-        # elif("天氣" in event.message.text):
-        #     weather_text = get_weather("2019")
-        #     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=weather_text))
-
-        # elif("smile" in event.message.text):
-        #     event.message.text += " :)"
 
         print("line reply")
         line_bot_api.reply_message(
@@ -192,6 +200,10 @@ def webhook_handler():
         print(f"REQUEST BODY: \n{body}")
         response = machine.advance(event)
         if response == False:
+            if(event.message.text == "fsm"):
+                url = "https://imgur.com/OQ6otzZ"
+                send_image_message(event.reply_token, url, "")
+                #line_bot_api.push_message(event.source_id, ImageSendMessage(original_content_url=url, preview_image_url=url))
             send_text_message(event.reply_token, "Not Entering any State")
 
     return "OK"
@@ -211,5 +223,5 @@ def show_fsm():
 #     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=event.message.text))
 
 if __name__ == "__main__":
-    port = os.environ.get("PORT", 8000)
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # port = os.environ.get("PORT", 8000)
+    app.run(port=8000, debug=True)

@@ -16,7 +16,7 @@ def send_text_message(reply_token, text):
 
 	return "OK"
 
-def send_image_message(reply_token, img_url, img_url2):
+def send_image_message(reply_token, img_url):
 	channel_access_token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", None)
 	line_bot_api = LineBotApi(channel_access_token)
 	print("enter send_image_url function")
@@ -26,9 +26,8 @@ def send_image_message(reply_token, img_url, img_url2):
 		"originalContentUrl": img_url,
 		"previewImageUrl": img_url
 	}
-	if(img_url2 == ""):
-		img_url2 = img_url
-	line_bot_api.reply_message(reply_token, ImageSendMessage(original_content_url=img_url, preview_image_url=img_url2))
+
+	line_bot_api.reply_message(reply_token, ImageSendMessage(original_content_url=img_url, preview_image_url=img_url))
 
 	return "OK"
 

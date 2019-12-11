@@ -329,6 +329,7 @@ class TocMachine(GraphMachine):
         print("delete mail.")
         reply_token = event.reply_token
         if(event.message.text == "是"):
+            print("mail_id:", self.get_mail_id)
             delete_mail(event.source.user_id, self.get_mail_id)
             send_text_message(reply_token, "已刪除")
         else:

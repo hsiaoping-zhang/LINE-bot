@@ -151,7 +151,7 @@ def recv_mailbox(receiver_id):
 			revise = {"read": True}
 			db_document.update(revise)
 			if(data["type"] == "img"):
-				return data["content"], "img", data["sender-name"]
+				return data["content"], "img", str(doc.id)
 			return data["sender-name"], data["content"], str(doc.id)
 	return "empty", "fail", "(date)"
 

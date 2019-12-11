@@ -1,6 +1,3 @@
-import os
-import sys
-
 from flask import Flask, jsonify, request, abort, send_file
 from dotenv import load_dotenv
 from linebot import LineBotApi, WebhookParser
@@ -8,13 +5,15 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
 from linebot.models import ImageSendMessage, VideoSendMessage, LocationSendMessage, StickerSendMessage
 
+import os
+import sys
+
 from fsm import TocMachine
 from utils import send_text_message, send_image_message
 
 from weather import get_weather
 
 import random
-#from utils import send_image_url
 
 
 load_dotenv()
@@ -118,7 +117,7 @@ machine = TocMachine(
     show_conditions=True,
 )
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path="")
 
 # get channel_secret and channel_access_token from your environment variable
 channel_secret = os.getenv("LINE_CHANNEL_SECRET", None)
@@ -132,7 +131,7 @@ if channel_access_token is None:
 
 line_bot_api = LineBotApi(channel_access_token)
 parser = WebhookParser(channel_secret)
-#handler = WebhookHandler("LINE_CHANNEL_SECRET")
+# handler = WebhookHandler("LINE_CHANNEL_SECRET")
 
 @app.route("/callback", methods=["POST"])
 def callback():
@@ -200,11 +199,8 @@ def webhook_handler():
         print(f"REQUEST BODY: \n{body}")
         response = machine.advance(event)
         if response == False:
-            if(event.message.text == "fsm"):
-                url = "https://imgur.com/OQ6otzZ"
-                send_image_message(event.reply_token, url, "")
-                #line_bot_api.push_message(event.source_id, ImageSendMessage(original_content_url=url, preview_image_url=url))
             send_text_message(event.reply_token, "Not Entering any State")
+
 
     return "OK"
 
@@ -214,14 +210,7 @@ def show_fsm():
     machine.get_graph().draw("fsm.png", prog="dot", format="png")
     return send_file("fsm.png", mimetype="image/png")
 
-# @handler.add(MessageEvent, message=TextMessage)
-# def handle_message(event):
-#     # get user id
-#     user_id = event.source.user_id
-#     print("user id =", user_id)
-
-#     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=event.message.text))
 
 if __name__ == "__main__":
-    # port = os.environ.get("PORT", 8000)
-    app.run(port=8000, debug=True)
+    port = os.environ.get("PORT", 8000)
+    app.run(host="0.0.0.0", port=port, debug=True)
